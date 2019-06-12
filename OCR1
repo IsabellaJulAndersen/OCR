@@ -1,0 +1,108 @@
+from bs4 import BeautifulSoup
+import os
+hocr_fn = r"C:\Data\batch-report-ocr\notebooks\05602_batch_report12.hocr"
+with open(hocr_fn, 'r') as hocr_f:
+    h_flat = hocr_f.read()
+soup_hocr = BeautifulSoup(h_flat)
+#tiffname = os.path.join(out_dir, os.path.splitext(os.path.basename(filepath))[0] + '.tiff')
+pngname = os.path.splitext(hocr_fn)[0] + '.png'
+print(pngname)
+
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+
+from fuzzywuzzy import fuzz
+
+
+import re
+
+pages = soup_hocr.body.find_all("div", {"class": "ocr_page"})
+pn = 3
+# pn=list(range(0,5))
+# print(p)
+# for page in pages:
+# for page in pn
+for ip,page in enumerate(pages):
+#page = pages[pn]
+    img_file = os.path.splitext(pngname)[0] + '-' + str(ip) + '.png'
+    I = plt.imread(img_file)
+
+    fig, ax = plt.subplots(1, 1, figsize=(24, 24))
+    ax.imshow(I, cmap='gray')
+    colour = ["red", "blue", "green", "yellow", "purple", "orange", "magenta", "cyan", "black"]
+    line_type = ['--', '-', ':']
+# line_info = [colour[np.random.choice(len(colour), 1)[0]][0]+line_type[np.random.choice(len(line_type), 1)[0]] for tt in field_texts]
+
+    if True:
+        careas = page.find_all("div", {"class": "ocr_carea"})
+        for ic, carea in enumerate(careas):
+            bbox = carea.attrs['title']
+            pars = carea.find_all("p", {"class": "ocr_par"})
+            for par in pars:
+                bbox_par = par.attrs['title'].replace('bbox', '')
+                bbox_par = np.array(bbox_par.replace(';', '').split(' ')[1:5], dtype=np.int)
+
+                lines = par.find_all("span", {"class": "ocr_line"})
+                for line in lines:
+                    words = line.find_all("span", {"class": "ocrx_word"})
+                    for iw, word in enumerate(words):
+                        bbox = word.attrs['title']
+                        bbox = np.array(bbox.replace(';', '').split(' ')[1:5], dtype=np.int)
+                        if word.getText() != ' ':
+                        # plt.text(bbox[0], 90+bbox[1], line.getText(), color='r')
+                            #ax.plot(bbox[[0, 0, 2, 2, 0]], bbox[[1, 3, 3, 1, 1]], 'g')
+
+
+                                #Cyklus nr
+                                if ip == 0 and fuzz.ratio and bbox[0] > 250 and bbox[1] < 450 and bbox[2] < 1000 and bbox[3] > 400:
+                                    l = line.getText().split('\n')
+                                    #regular expression
+                                    l = [re.sub(r'[^\wA-z:]','',x) for x in l if x]
+
+                                    print(l)
+                                    break
+
+                                #Programnavn
+                                if fuzz.ratio("Prog.navn", word.getText()) > 80 and fuzz.ratio("[293 496 473 544]",str(bbox))>80 and ip == 0:
+                                    print(line.getText().split('\n'))
+
+                                # Cyklus kommentar bbox=[ 411 1499  601 1525]
+                                # na bbox=[ 857 1506  888 1526]
+                                if ip == 0 and bbox[0] > 300 and bbox[1] > 1490 and bbox[2] < 2000 and bbox[3] < 1530:
+                                    l = line.getText().split('\n')
+                                    l = [x for x in l if x]
+                                    print(l)
+                                    break
+
+                                # Tabelværdier
+                                TEPES = ["TE00", "TE24", "TE08", "TE27", "TE02", "TE25", "TE12", "TE28", "TE11", "TE31","PE06", "PE29"]
+                                BBOKSS = ["[ 457 1574  526 1600]", "[ 457 1623  526 1649]", "[ 457 1673  526 1699]",
+                                          "[ 457 1718  526 1759]", "[ 457 1773  526 1799]", "[ 457 1819  525 1859]",
+                                          "[ 457 1873  526 1899]", "[ 457 1923  526 1948]", "[ 457 1973  525 1998]",
+                                          "[ 457 2018  525 2058]", "[ 460 2103  525 2129]", "[ 460 2153  525 2179]"]
+
+                                for it, TEPE in enumerate(TEPES):
+                                    if fuzz.ratio(TEPES[it], word.getText()) > 80:
+                                        for ib, bboks in enumerate(BBOKSS):
+                                            if fuzz.ratio(BBOKSS[ib], str(bbox)) > 80:
+                                                A = line.getText().split('\n')
+                                                #Næste linje virker ikke her i PyCharm
+                                                A = [x for x in A if x and x != '*' and x != '~~' and x != 'mbar(a)']
+                                                print(A)
+                                                break
+
+
+                                if fuzz.ratio("Alarmer", word.getText()) > 80 and fuzz.ratio("[275 699 398 723]",str(bbox)) > 80:
+                                    print(line.getText().split('\n'))
+
+
+                        # bbox for den store kasse som nok i virkeligheden er 4 forskellige kasser: [238 3123 2311 742]
+                                if ip==3 and bbox[0] > 230 and bbox[1] < 3120 and bbox[2] < 2310 and bbox[3] > 740:
+                                    l = line.getText().split('\n')
+                                    l = [x for x in l if x]
+                                    print(l)
+                                    break
+
+plt.show(block=False)
+print("Done!")
